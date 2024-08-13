@@ -1,5 +1,6 @@
 use std::ffi::{CStr, OsString};
 use std::io::{IoSlice, IoSliceMut};
+use std::mem;
 use std::os::windows::io::{AsRawHandle, RawHandle};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -385,9 +386,15 @@ impl Settings {
 		self.set_stop_bits(crate::StopBits::One);
 		self.set_parity(crate::Parity::None);
 		self.set_flow_control(crate::FlowControl::None);
-		self.dcb.set_fBinary(1);
-		self.dcb.set_fErrorChar(0);
-		self.dcb.set_fNull(0);
+		let mask = ((1 << (1 - 0)) - 1) << 0;
+        self.dcb._bitfield &= !mask;
+        self.dcb._bitfield |= (1 << 0) & mask;
+		let mask = ((1 << (11 - 10)) - 1) << 10;
+        self.dcb._bitfield &= !mask;
+        self.dcb._bitfield |= (0 << 10) & mask;
+		let mask = ((1 << (12 - 11)) - 1) << 11;
+        self.dcb._bitfield &= !mask;
+        self.dcb._bitfield |= (0 << 11) & mask;
 	}
 
 	pub fn set_baud_rate(&mut self, baud_rate: u32) -> std::io::Result<()> {
@@ -436,22 +443,30 @@ impl Settings {
 	pub fn set_parity(&mut self, parity: crate::Parity) {
 		match parity {
 			crate::Parity::None => {
-				self.dcb.set_fParity(0);
+				let mask = ((1 << (2 - 1)) - 1) << 1;
+                self.dcb._bitfield &= !mask;
+                self.dcb._bitfield |= (0 << 1) & mask;
 				self.dcb.Parity = NOPARITY;
 			},
 			crate::Parity::Odd => {
-				self.dcb.set_fParity(1);
+				let mask = ((1 << (2 - 1)) - 1) << 1;
+                self.dcb._bitfield &= !mask;
+                self.dcb._bitfield |= (1 << 1) & mask;
 				self.dcb.Parity = ODDPARITY;
 			},
 			crate::Parity::Even => {
-				self.dcb.set_fParity(1);
+				let mask = ((1 << (2 - 1)) - 1) << 1;
+                self.dcb._bitfield &= !mask;
+                self.dcb._bitfield |= (1 << 1) & mask;
 				self.dcb.Parity = EVENPARITY;
 			},
 		}
 	}
 
 	pub fn get_parity(&self) -> std::io::Result<crate::Parity> {
-		let parity_enabled = self.dcb.fParity() != 0;
+		let size = mem::size_of::<u32>() * 8;
+        let parity_check = self.dcb._bitfield << (size - 2) >> (size - 2 + 1);
+		let parity_enabled = parity_check != 0;
 		match self.dcb.Parity {
 			NOPARITY => Ok(crate::Parity::None),
 			ODDPARITY if parity_enabled => Ok(crate::Parity::Odd),
