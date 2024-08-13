@@ -87,7 +87,7 @@ impl SerialPort {
 			timeouts.ReadTotalTimeoutConstant = super::DEFAULT_TIMEOUT_MS;
 			timeouts.WriteTotalTimeoutMultiplier = 0;
 			timeouts.WriteTotalTimeoutConstant = super::DEFAULT_TIMEOUT_MS;
-			check_bool(SetCommTimeouts(file.as_raw_handle(), &mut timeouts))?;
+			check_bool(SetCommTimeouts(file.as_raw_handle(), &timeouts))?;
 		}
 		Ok(Self::from_file(file))
 	}
@@ -113,7 +113,7 @@ impl SerialPort {
 	pub fn set_configuration(&mut self, settings: &Settings) -> std::io::Result<()> {
 		unsafe {
 			let mut settings = settings.clone();
-			check_bool(SetCommState(self.file.as_raw_handle(), &mut settings.dcb))
+			check_bool(SetCommState(self.file.as_raw_handle(), &settings.dcb))
 		}
 	}
 
@@ -133,7 +133,7 @@ impl SerialPort {
 			timeouts.ReadIntervalTimeout = u32::MAX;
 			timeouts.ReadTotalTimeoutMultiplier = u32::MAX;
 			timeouts.ReadTotalTimeoutConstant = timeout_ms;
-			check_bool(SetCommTimeouts(self.file.as_raw_handle(), &mut timeouts))
+			check_bool(SetCommTimeouts(self.file.as_raw_handle(), &timeouts))
 		}
 	}
 
@@ -152,7 +152,7 @@ impl SerialPort {
 			check_bool(GetCommTimeouts(self.file.as_raw_handle(), &mut timeouts))?;
 			timeouts.WriteTotalTimeoutMultiplier = 0;
 			timeouts.WriteTotalTimeoutConstant = timeout_ms;
-			check_bool(SetCommTimeouts(self.file.as_raw_handle(), &mut timeouts))
+			check_bool(SetCommTimeouts(self.file.as_raw_handle(), &timeouts))
 		}
 	}
 
@@ -189,7 +189,7 @@ impl SerialPort {
 			WriteTotalTimeoutConstant: timeouts.write_total_timeout_constant,
 		};
 		unsafe {
-			check_bool(SetCommTimeouts(self.file.as_raw_handle(), &mut timeouts))?;
+			check_bool(SetCommTimeouts(self.file.as_raw_handle(), &timeouts))?;
 			Ok(())
 		}
 	}
