@@ -13,6 +13,43 @@ use windows_sys::Win32::System::Threading::CreateEventA;
 use windows_sys::Win32::System::IO::{GetOverlappedResult, OVERLAPPED};
 use windows_sys::Win32::{Devices::Communication::{COMMTIMEOUTS, DCB}, Storage::FileSystem::FILE_FLAG_OVERLAPPED};
 
+macro_rules! BITFIELD {
+    ($base:ident $inner:ident $field:ident: $fieldtype:ty [
+        $($thing:ident $set_thing:ident[$r:expr],)+
+    ]) => {
+        impl $base {$(
+            #[inline]
+            pub fn $thing(&self) -> $fieldtype {
+                let size = std::mem::size_of::<$fieldtype>() * 8;
+                self.$inner.$field << (size - $r.end) >> (size - $r.end + $r.start)
+            }
+            #[inline]
+            pub fn $set_thing(&mut self, val: $fieldtype) {
+                let mask = ((1 << ($r.end - $r.start)) - 1) << $r.start;
+                self.$inner.$field &= !mask;
+                self.$inner.$field |= (val << $r.start) & mask;
+            }
+        )+}
+    }
+}
+
+BITFIELD!{Settings dcb _bitfield: u32 [
+    fBinary set_fBinary[0..1],
+    fParity set_fParity[1..2],
+    fOutxCtsFlow set_fOutxCtsFlow[2..3],
+    fOutxDsrFlow set_fOutxDsrFlow[3..4],
+    fDtrControl set_fDtrControl[4..6],
+    fDsrSensitivity set_fDsrSensitivity[6..7],
+    fTXContinueOnXoff set_fTXContinueOnXoff[7..8],
+    fOutX set_fOutX[8..9],
+    fInX set_fInX[9..10],
+    fErrorChar set_fErrorChar[10..11],
+    fNull set_fNull[11..12],
+    fRtsControl set_fRtsControl[12..14],
+    fAbortOnError set_fAbortOnError[14..15],
+    fDummy2 set_fDummy2[15..32],
+]}
+
 pub struct SerialPort {
 	pub file: std::fs::File,
 }
@@ -386,15 +423,9 @@ impl Settings {
 		self.set_stop_bits(crate::StopBits::One);
 		self.set_parity(crate::Parity::None);
 		self.set_flow_control(crate::FlowControl::None);
-		let mask = ((1 << (1 - 0)) - 1) << 0;
-        self.dcb._bitfield &= !mask;
-        self.dcb._bitfield |= (1 << 0) & mask;
-		let mask = ((1 << (11 - 10)) - 1) << 10;
-        self.dcb._bitfield &= !mask;
-        self.dcb._bitfield |= (0 << 10) & mask;
-		let mask = ((1 << (12 - 11)) - 1) << 11;
-        self.dcb._bitfield &= !mask;
-        self.dcb._bitfield |= (0 << 11) & mask;
+		self.set_fBinary(1);
+		self.set_fErrorChar(0);
+		self.set_fNull(0);
 	}
 
 	pub fn set_baud_rate(&mut self, baud_rate: u32) -> std::io::Result<()> {
@@ -443,30 +474,22 @@ impl Settings {
 	pub fn set_parity(&mut self, parity: crate::Parity) {
 		match parity {
 			crate::Parity::None => {
-				let mask = ((1 << (2 - 1)) - 1) << 1;
-                self.dcb._bitfield &= !mask;
-                self.dcb._bitfield |= (0 << 1) & mask;
+				self.set_fParity(0);
 				self.dcb.Parity = NOPARITY;
 			},
 			crate::Parity::Odd => {
-				let mask = ((1 << (2 - 1)) - 1) << 1;
-                self.dcb._bitfield &= !mask;
-                self.dcb._bitfield |= (1 << 1) & mask;
+				self.set_fParity(1);
 				self.dcb.Parity = ODDPARITY;
 			},
 			crate::Parity::Even => {
-				let mask = ((1 << (2 - 1)) - 1) << 1;
-                self.dcb._bitfield &= !mask;
-                self.dcb._bitfield |= (1 << 1) & mask;
+				self.set_fParity(1);
 				self.dcb.Parity = EVENPARITY;
 			},
 		}
 	}
 
 	pub fn get_parity(&self) -> std::io::Result<crate::Parity> {
-		let size = mem::size_of::<u32>() * 8;
-        let parity_check = self.dcb._bitfield << (size - 2) >> (size - 2 + 1);
-		let parity_enabled = parity_check != 0;
+		let parity_enabled = self.fParity() != 0;
 		match self.dcb.Parity {
 			NOPARITY => Ok(crate::Parity::None),
 			ODDPARITY if parity_enabled => Ok(crate::Parity::Odd),
@@ -478,43 +501,43 @@ impl Settings {
 	pub fn set_flow_control(&mut self, flow_control: crate::FlowControl) {
 		match flow_control {
 			crate::FlowControl::None => {
-				self.dcb.set_fInX(0);
-				self.dcb.set_fOutX(0);
-				self.dcb.set_fDtrControl(DTR_CONTROL_DISABLE);
-				self.dcb.set_fDsrSensitivity(0);
-				self.dcb.set_fOutxDsrFlow(0);
-				self.dcb.set_fRtsControl(RTS_CONTROL_DISABLE);
-				self.dcb.set_fOutxCtsFlow(0);
+				self.set_fInX(0);
+				self.set_fOutX(0);
+				self.set_fDtrControl(DTR_CONTROL_DISABLE);
+				self.set_fDsrSensitivity(0);
+				self.set_fOutxDsrFlow(0);
+				self.set_fRtsControl(RTS_CONTROL_DISABLE);
+				self.set_fOutxCtsFlow(0);
 			},
 			crate::FlowControl::XonXoff => {
-				self.dcb.set_fInX(1);
-				self.dcb.set_fOutX(1);
-				self.dcb.set_fDtrControl(DTR_CONTROL_DISABLE);
-				self.dcb.set_fDsrSensitivity(0);
-				self.dcb.set_fOutxDsrFlow(0);
-				self.dcb.set_fRtsControl(RTS_CONTROL_DISABLE);
-				self.dcb.set_fOutxCtsFlow(0);
+				self.set_fInX(1);
+				self.set_fOutX(1);
+				self.set_fDtrControl(DTR_CONTROL_DISABLE);
+				self.set_fDsrSensitivity(0);
+				self.set_fOutxDsrFlow(0);
+				self.set_fRtsControl(RTS_CONTROL_DISABLE);
+				self.set_fOutxCtsFlow(0);
 			},
 			crate::FlowControl::RtsCts => {
-				self.dcb.set_fInX(0);
-				self.dcb.set_fOutX(0);
-				self.dcb.set_fDtrControl(DTR_CONTROL_DISABLE);
-				self.dcb.set_fDsrSensitivity(0);
-				self.dcb.set_fOutxDsrFlow(0);
-				self.dcb.set_fRtsControl(RTS_CONTROL_TOGGLE);
-				self.dcb.set_fOutxCtsFlow(1);
+				self.set_fInX(0);
+				self.set_fOutX(0);
+				self.set_fDtrControl(DTR_CONTROL_DISABLE);
+				self.set_fDsrSensitivity(0);
+				self.set_fOutxDsrFlow(0);
+				self.set_fRtsControl(RTS_CONTROL_TOGGLE);
+				self.set_fOutxCtsFlow(1);
 			},
 		}
 	}
 
 	#[rustfmt::skip]
 	pub fn get_flow_control(&self) -> std::io::Result<crate::FlowControl> {
-		let in_x = self.dcb.fInX() != 0;
-		let out_x = self.dcb.fOutX() != 0;
-		let out_cts = self.dcb.fOutxCtsFlow() != 0;
-		let out_dsr = self.dcb.fOutxDsrFlow() != 0;
+		let in_x = self.fInX() != 0;
+		let out_x = self.fOutX() != 0;
+		let out_cts = self.fOutxCtsFlow() != 0;
+		let out_dsr = self.fOutxDsrFlow() != 0;
 
-		match (in_x, out_x, out_cts, out_dsr, self.dcb.fDtrControl(), self.dcb.fRtsControl()) {
+		match (in_x, out_x, out_cts, out_dsr, self.fDtrControl(), self.fRtsControl()) {
 			(false, false, false, false, DTR_CONTROL_DISABLE, RTS_CONTROL_DISABLE) => {
 				Ok(crate::FlowControl::None)
 			},
