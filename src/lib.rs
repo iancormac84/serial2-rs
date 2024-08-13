@@ -54,6 +54,8 @@
 
 #![cfg_attr(feature = "doc-cfg", feature(doc_cfg))]
 
+#![allow(non_snake_case)]
+#![allow(unused)]
 #![warn(missing_docs)]
 #![warn(private_interfaces)]
 #![warn(private_bounds)]

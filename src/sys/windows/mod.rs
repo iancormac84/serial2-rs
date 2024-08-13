@@ -1,6 +1,5 @@
-use std::ffi::{CStr, OsString};
+use std::ffi::OsString;
 use std::io::{IoSlice, IoSliceMut};
-use std::mem;
 use std::os::windows::io::{AsRawHandle, RawHandle};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -10,6 +9,7 @@ use windows_sys::Win32::Devices::Communication::{EscapeCommFunction, GetCommMode
 use windows_sys::Win32::Foundation::{CloseHandle, BOOL, ERROR_IO_PENDING};
 use windows_sys::Win32::Storage::FileSystem::{FlushFileBuffers, ReadFile, WriteFile};
 use windows_sys::Win32::System::Threading::CreateEventA;
+use windows_sys::Win32::System::WindowsProgramming::{DTR_CONTROL_DISABLE, RTS_CONTROL_DISABLE, RTS_CONTROL_TOGGLE};
 use windows_sys::Win32::System::IO::{GetOverlappedResult, OVERLAPPED};
 use windows_sys::Win32::{Devices::Communication::{COMMTIMEOUTS, DCB}, Storage::FileSystem::FILE_FLAG_OVERLAPPED};
 
@@ -567,21 +567,12 @@ pub fn enumerate() -> std::io::Result<Vec<PathBuf>> {
 		},
 	};
 
-	let (value_count, max_value_name_len, max_value_data_len) = device_map.get_value_info()?;
+	let values_iter = device_map.values()?;
 
 	let mut entries = Vec::with_capacity(16);
-	for i in 0..value_count {
-		let mut name = match device_map.get_string_value(i, max_value_name_len, max_value_data_len) {
-			Ok(Some((_name, data))) => data,
-			Ok(None) => continue,
-			Err(_) => continue,
-		};
-		if let Some(i) = name.iter().rposition(|&b| b != 0) {
-			name.truncate(i + 1);
-			if let Ok(name) = String::from_utf8(name) {
-				entries.push(name.into());
-			}
-		}
+	for (_name, value) in values_iter {
+		let path = PathBuf::from(String::try_from(value)?);
+		entries.push(path);
 	}
 
 	Ok(entries)
