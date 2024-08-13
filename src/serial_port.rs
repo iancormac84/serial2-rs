@@ -96,6 +96,11 @@ impl SerialPort {
 		sys::enumerate()
 	}
 
+	/// Return the name associated with the serial port, if known.
+	pub fn name(&self) -> Option<String> {
+		self.inner.name.clone()
+	}
+
 	/// Configure (or reconfigure) the serial port.
 	pub fn set_configuration(&mut self, settings: &Settings) -> std::io::Result<()> {
 		self.inner.set_configuration(&settings.inner)

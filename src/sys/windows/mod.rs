@@ -63,6 +63,7 @@ BITFIELD! {Settings dcb _bitfield: u32 [
 
 pub struct SerialPort {
 	pub file: std::fs::File,
+	pub name: Option<String>,
 }
 
 #[derive(Clone)]
@@ -100,16 +101,19 @@ impl SerialPort {
 			timeouts.WriteTotalTimeoutConstant = super::DEFAULT_TIMEOUT_MS;
 			check_bool(SetCommTimeouts(file.as_raw_handle(), &timeouts))?;
 		}
-		Ok(Self::from_file(file))
+		let mut port = Self::from_file(file);
+		port.name = Some(name.to_str().unwrap().to_owned());
+		Ok(port)
 	}
 
 	pub fn from_file(file: std::fs::File) -> Self {
-		Self { file }
+		Self { file, name: None }
 	}
 
 	pub fn try_clone(&self) -> std::io::Result<Self> {
 		Ok(Self {
 			file: self.file.try_clone()?,
+			name: self.name.clone(),
 		})
 	}
 

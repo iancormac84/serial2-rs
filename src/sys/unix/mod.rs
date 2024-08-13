@@ -7,6 +7,7 @@ use std::time::Duration;
 
 pub struct SerialPort {
 	pub file: std::fs::File,
+	pub name: Option<String>,
 	pub read_timeout_ms: u32,
 	pub write_timeout_ms: u32,
 }
@@ -114,7 +115,10 @@ impl SerialPort {
 			.custom_flags(libc::O_NONBLOCK | libc::O_NOCTTY)
 			.open(path)?;
 
-		Ok(Self::from_file(file))
+		
+		let mut port = Self::from_file(file);
+		port.name = Some(name.to_str().unwrap().to_owned());
+		Ok(port)
 	}
 
 	#[cfg(any(feature = "doc", all(unix, feature = "unix")))]
@@ -137,6 +141,7 @@ impl SerialPort {
 			file,
 			read_timeout_ms: super::DEFAULT_TIMEOUT_MS,
 			write_timeout_ms: super::DEFAULT_TIMEOUT_MS,
+			name: None,
 		}
 	}
 
@@ -145,6 +150,7 @@ impl SerialPort {
 			file: self.file.try_clone()?,
 			read_timeout_ms: self.read_timeout_ms,
 			write_timeout_ms: self.write_timeout_ms,
+			name: self.name.clone(),
 		})
 	}
 
