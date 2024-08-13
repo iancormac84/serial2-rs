@@ -13,6 +13,8 @@ use windows_sys::Win32::System::WindowsProgramming::{DTR_CONTROL_DISABLE, RTS_CO
 use windows_sys::Win32::System::IO::{GetOverlappedResult, OVERLAPPED};
 use windows_sys::Win32::{Devices::Communication::{COMMTIMEOUTS, DCB}, Storage::FileSystem::FILE_FLAG_OVERLAPPED};
 
+// Copied from the [winapi](https://github.com/retep998/winapi-rs.git) crate and modified
+// to circumvent orphan rule limitations
 macro_rules! BITFIELD {
     ($base:ident $inner:ident $field:ident: $fieldtype:ty [
         $($thing:ident $set_thing:ident[$r:expr],)+
