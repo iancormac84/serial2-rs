@@ -1,5 +1,5 @@
-use std::path::PathBuf;
 use std::os::unix::io::RawFd;
+use std::path::PathBuf;
 
 /// A ioctl to set the baud rate of a serial port.
 ///

@@ -64,7 +64,8 @@ impl SerialPort {
 	#[cfg(any(feature = "doc", all(unix, feature = "unix")))]
 	#[cfg_attr(feature = "doc-cfg", doc(cfg(feature = "unix")))]
 	pub fn pair() -> std::io::Result<(Self, Self)> {
-		#[cfg(unix)] {
+		#[cfg(unix)]
+		{
 			let (pty_a, pty_b) = sys::SerialPort::pair()?;
 			let mut pty_a = Self { inner: pty_a };
 			let mut pty_b = Self { inner: pty_b };
@@ -81,7 +82,8 @@ impl SerialPort {
 
 			Ok((pty_a, pty_b))
 		}
-		#[cfg(windows)] {
+		#[cfg(windows)]
+		{
 			unreachable!("this code is only enabled on Unix platforms or during documentation generation")
 		}
 	}
@@ -168,7 +170,12 @@ impl SerialPort {
 		let mut buf = buf;
 		while !buf.is_empty() {
 			match self.read(buf) {
-				Ok(0) => return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "failed to fill whole buffer")),
+				Ok(0) => {
+					return Err(std::io::Error::new(
+						std::io::ErrorKind::UnexpectedEof,
+						"failed to fill whole buffer",
+					))
+				},
 				Ok(n) => buf = &mut buf[n..],
 				Err(e) => {
 					if e.kind() != std::io::ErrorKind::Interrupted {
@@ -210,7 +217,12 @@ impl SerialPort {
 		let mut buf = buf;
 		while !buf.is_empty() {
 			match self.write(buf) {
-				Ok(0) => return Err(std::io::Error::new(std::io::ErrorKind::WriteZero, "failed to write whole buffer")),
+				Ok(0) => {
+					return Err(std::io::Error::new(
+						std::io::ErrorKind::WriteZero,
+						"failed to write whole buffer",
+					))
+				},
 				Ok(n) => buf = &buf[n..],
 				Err(e) => {
 					if e.kind() != std::io::ErrorKind::Interrupted {
@@ -300,10 +312,12 @@ impl SerialPort {
 	#[cfg(any(feature = "doc", all(feature = "windows", windows)))]
 	#[cfg_attr(feature = "doc-cfg", doc(cfg(feature = "windows")))]
 	pub fn get_windows_timeouts(&self) -> std::io::Result<crate::os::windows::CommTimeouts> {
-		#[cfg(windows)] {
+		#[cfg(windows)]
+		{
 			self.inner.get_windows_timeouts()
 		}
-		#[cfg(not(windows))] {
+		#[cfg(not(windows))]
+		{
 			unreachable!("this code is only enabled on Windows or during documentation generation")
 		}
 	}
@@ -320,10 +334,12 @@ impl SerialPort {
 	#[cfg(any(feature = "doc", all(feature = "windows", windows)))]
 	#[cfg_attr(feature = "doc-cfg", doc(cfg(feature = "windows")))]
 	pub fn set_windows_timeouts(&self, timeouts: &crate::os::windows::CommTimeouts) -> std::io::Result<()> {
-		#[cfg(windows)] {
+		#[cfg(windows)]
+		{
 			self.inner.set_windows_timeouts(timeouts)
 		}
-		#[cfg(not(windows))] {
+		#[cfg(not(windows))]
+		{
 			let _ = timeouts;
 			unreachable!("this code is only enabled on Windows or during documentation generation")
 		}
@@ -422,7 +438,8 @@ impl SerialPort {
 	pub fn get_rs4xx_mode(&self) -> std::io::Result<rs4xx::TransceiverMode> {
 		#[cfg(all(feature = "rs4xx", target_os = "linux"))]
 		return sys::get_rs4xx_mode(&self.inner);
-		#[allow(unreachable_code)] {
+		#[allow(unreachable_code)]
+		{
 			panic!("unsupported platform");
 		}
 	}
@@ -444,8 +461,9 @@ impl SerialPort {
 	pub fn set_rs4xx_mode(&self, mode: impl Into<rs4xx::TransceiverMode>) -> std::io::Result<()> {
 		#[cfg(all(feature = "rs4xx", target_os = "linux"))]
 		return sys::set_rs4xx_mode(&self.inner, &mode.into());
-		#[allow(unreachable_code)] {
-			let  _ = mode;
+		#[allow(unreachable_code)]
+		{
+			let _ = mode;
 			panic!("unsupported platform");
 		}
 	}

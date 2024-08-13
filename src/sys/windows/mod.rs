@@ -1,17 +1,26 @@
-use std::ffi::OsString;
-use std::io::{IoSlice, IoSliceMut};
-use std::os::windows::io::{AsRawHandle, RawHandle};
-use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::{
+	ffi::OsString,
+	io::{IoSlice, IoSliceMut},
+	os::windows::io::{AsRawHandle, RawHandle},
+	path::{Path, PathBuf},
+	time::Duration,
+};
 
 use windows_registry::{Key, LOCAL_MACHINE};
-use windows_sys::Win32::Devices::Communication::{EscapeCommFunction, GetCommModemStatus, GetCommState, GetCommTimeouts, PurgeComm, SetCommState, SetCommTimeouts, CLRDTR, CLRRTS, EVENPARITY, MS_CTS_ON, MS_DSR_ON, MS_RING_ON, MS_RLSD_ON, NOPARITY, ODDPARITY, ONESTOPBIT, PURGE_RXCLEAR, PURGE_TXCLEAR, SETDTR, SETRTS, TWOSTOPBITS};
-use windows_sys::Win32::Foundation::{CloseHandle, BOOL, ERROR_IO_PENDING};
-use windows_sys::Win32::Storage::FileSystem::{FlushFileBuffers, ReadFile, WriteFile};
-use windows_sys::Win32::System::Threading::CreateEventA;
-use windows_sys::Win32::System::WindowsProgramming::{DTR_CONTROL_DISABLE, RTS_CONTROL_DISABLE, RTS_CONTROL_TOGGLE};
-use windows_sys::Win32::System::IO::{GetOverlappedResult, OVERLAPPED};
-use windows_sys::Win32::{Devices::Communication::{COMMTIMEOUTS, DCB}, Storage::FileSystem::FILE_FLAG_OVERLAPPED};
+use windows_sys::Win32::{
+	Devices::Communication::{
+		EscapeCommFunction, GetCommModemStatus, GetCommState, GetCommTimeouts, PurgeComm, SetCommState,
+		SetCommTimeouts, CLRDTR, CLRRTS, COMMTIMEOUTS, DCB, EVENPARITY, MS_CTS_ON, MS_DSR_ON, MS_RING_ON, MS_RLSD_ON,
+		NOPARITY, ODDPARITY, ONESTOPBIT, PURGE_RXCLEAR, PURGE_TXCLEAR, SETDTR, SETRTS, TWOSTOPBITS,
+	},
+	Foundation::{CloseHandle, BOOL, ERROR_IO_PENDING},
+	Storage::FileSystem::{FlushFileBuffers, ReadFile, WriteFile, FILE_FLAG_OVERLAPPED},
+	System::{
+		Threading::CreateEventA,
+		WindowsProgramming::{DTR_CONTROL_DISABLE, RTS_CONTROL_DISABLE, RTS_CONTROL_TOGGLE},
+		IO::{GetOverlappedResult, OVERLAPPED},
+	},
+};
 
 // Copied from the [winapi](https://github.com/retep998/winapi-rs.git) crate and modified
 // to circumvent orphan rule limitations
@@ -35,21 +44,21 @@ macro_rules! BITFIELD {
     }
 }
 
-BITFIELD!{Settings dcb _bitfield: u32 [
-    fBinary set_fBinary[0..1],
-    fParity set_fParity[1..2],
-    fOutxCtsFlow set_fOutxCtsFlow[2..3],
-    fOutxDsrFlow set_fOutxDsrFlow[3..4],
-    fDtrControl set_fDtrControl[4..6],
-    fDsrSensitivity set_fDsrSensitivity[6..7],
-    fTXContinueOnXoff set_fTXContinueOnXoff[7..8],
-    fOutX set_fOutX[8..9],
-    fInX set_fInX[9..10],
-    fErrorChar set_fErrorChar[10..11],
-    fNull set_fNull[11..12],
-    fRtsControl set_fRtsControl[12..14],
-    fAbortOnError set_fAbortOnError[14..15],
-    fDummy2 set_fDummy2[15..32],
+BITFIELD! {Settings dcb _bitfield: u32 [
+	fBinary set_fBinary[0..1],
+	fParity set_fParity[1..2],
+	fOutxCtsFlow set_fOutxCtsFlow[2..3],
+	fOutxDsrFlow set_fOutxDsrFlow[3..4],
+	fDtrControl set_fDtrControl[4..6],
+	fDsrSensitivity set_fDsrSensitivity[6..7],
+	fTXContinueOnXoff set_fTXContinueOnXoff[7..8],
+	fOutX set_fOutX[8..9],
+	fInX set_fInX[9..10],
+	fErrorChar set_fErrorChar[10..11],
+	fNull set_fNull[11..12],
+	fRtsControl set_fRtsControl[12..14],
+	fAbortOnError set_fAbortOnError[14..15],
+	fDummy2 set_fDummy2[15..32],
 ]}
 
 pub struct SerialPort {
@@ -561,8 +570,8 @@ pub fn enumerate() -> std::io::Result<Vec<PathBuf>> {
 		Err(e) => {
 			let std_error = std::io::Error::from(e);
 			if std_error.kind() == std::io::ErrorKind::NotFound {
-			    // The registry key doesn't exist until a serial port was available at-least once.
-			    return Ok(Vec::new());
+				// The registry key doesn't exist until a serial port was available at-least once.
+				return Ok(Vec::new());
 			} else {
 				return Err(std_error);
 			}

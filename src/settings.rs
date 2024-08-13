@@ -21,10 +21,8 @@ macro_rules! delegate_impl {
 			type Error = TryFromError<$from>;
 
 			fn try_from(value: $from) -> Result<Self, Self::Error> {
-				let narrowed = u8::try_from(value)
-					.map_err(|_| Self::unexpected(value))?;
-				Self::try_from(narrowed)
-					.map_err(|_| Self::unexpected(value))
+				let narrowed = u8::try_from(value).map_err(|_| Self::unexpected(value))?;
+				Self::try_from(narrowed).map_err(|_| Self::unexpected(value))
 			}
 		}
 	};
@@ -452,10 +450,12 @@ impl Settings {
 	#[cfg(any(feature = "doc", all(unix, feature = "unix")))]
 	#[cfg_attr(feature = "doc-cfg", doc(cfg(feature = "unix")))]
 	pub fn as_termios(&self) -> &crate::os::unix::RawTermios {
-		#[cfg(unix)] {
+		#[cfg(unix)]
+		{
 			&self.inner.termios
 		}
-		#[cfg(not(unix))] {
+		#[cfg(not(unix))]
+		{
 			unreachable!("this code is only enabled on Unix platforms or during documentation generation")
 		}
 	}
@@ -470,10 +470,12 @@ impl Settings {
 	#[cfg(any(feature = "doc", all(unix, feature = "unix")))]
 	#[cfg_attr(feature = "doc-cfg", doc(cfg(feature = "unix")))]
 	pub fn as_termios_mut(&mut self) -> &mut crate::os::unix::RawTermios {
-		#[cfg(unix)] {
+		#[cfg(unix)]
+		{
 			&mut self.inner.termios
 		}
-		#[cfg(not(unix))] {
+		#[cfg(not(unix))]
+		{
 			unreachable!("this code is only enabled on Unix platforms or during documentation generation")
 		}
 	}
@@ -485,10 +487,12 @@ impl Settings {
 	#[cfg(any(feature = "doc", all(windows, feature = "windows")))]
 	#[cfg_attr(feature = "doc-cfg", doc(cfg(feature = "windows")))]
 	pub fn as_raw_dbc(&self) -> &crate::os::windows::DCB {
-		#[cfg(windows)] {
+		#[cfg(windows)]
+		{
 			&self.inner.dcb
 		}
-		#[cfg(not(windows))] {
+		#[cfg(not(windows))]
+		{
 			unreachable!("this code is only enabled on Windows or during documentation generation")
 		}
 	}
@@ -500,10 +504,12 @@ impl Settings {
 	#[cfg(any(feature = "doc", all(windows, feature = "windows")))]
 	#[cfg_attr(feature = "doc-cfg", doc(cfg(feature = "windows")))]
 	pub fn as_raw_dbc_mut(&mut self) -> &mut crate::os::windows::DCB {
-		#[cfg(windows)] {
+		#[cfg(windows)]
+		{
 			&mut self.inner.dcb
 		}
-		#[cfg(not(windows))] {
+		#[cfg(not(windows))]
+		{
 			unreachable!("this code is only enabled on Windows or during documentation generation")
 		}
 	}

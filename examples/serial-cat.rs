@@ -16,8 +16,8 @@ fn do_main() -> Result<(), ()> {
 		.parse()
 		.map_err(|_| eprintln!("Error: invalid baud rate: {}", args[2]))?;
 
-	let port = SerialPort::open(port_name, baud_rate)
-		.map_err(|e| eprintln!("Error: Failed to open {}: {}", port_name, e))?;
+	let port =
+		SerialPort::open(port_name, baud_rate).map_err(|e| eprintln!("Error: Failed to open {}: {}", port_name, e))?;
 	let port = Arc::new(port);
 
 	// Spawn a thread to read from stdin and write to the serial port.

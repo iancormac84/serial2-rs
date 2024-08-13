@@ -71,5 +71,8 @@ fn test_serde_flow_control() {
 	assert!(let Ok(serial2::FlowControl::RtsCts) = serial2::FlowControl::from_str("rts/cts"));
 
 	let_assert!(Err(e) = serial2::FlowControl::from_str("plug-in/plug-out"));
-	assert!(e.to_string() == "invalid value: \"plug-in/plug-out\", expected the string \"none\", \"xon/xoff\" or \"rts/cts\"");
+	assert!(
+		e.to_string()
+			== "invalid value: \"plug-in/plug-out\", expected the string \"none\", \"xon/xoff\" or \"rts/cts\""
+	);
 }
