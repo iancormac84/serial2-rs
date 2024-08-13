@@ -2,7 +2,7 @@ use std::io::{IoSlice, IoSliceMut};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use crate::{sys, IntoSettings, Settings};
+use crate::{sys, CharSize, FlowControl, IntoSettings, Parity, Settings, StopBits};
 
 #[cfg(any(feature = "doc", all(feature = "rs4xx", target_os = "linux")))]
 use crate::rs4xx;
@@ -472,6 +472,264 @@ impl SerialPort {
 			panic!("unsupported platform");
 		}
 	}
+}
+
+impl SerialPort {
+    /// Returns the current baud rate.
+    ///
+    /// This function returns `None` if the baud rate could not be determined. This may occur if
+    /// the hardware is in an uninitialized state. Setting a baud rate with `set_baud_rate()`
+    /// should initialize the baud rate to a supported value.
+    #[inline(always)]
+    fn baud_rate(&self) -> std::io::Result<u32> {
+        self.inner.get_configuration()?.get_baud_rate()
+    }
+
+    /// Returns the character size.
+    ///
+    /// This function returns `None` if the character size could not be determined. This may occur
+    /// if the hardware is in an uninitialized state or is using a non-standard character size.
+    /// Setting a baud rate with `set_char_size()` should initialize the character size to a
+    /// supported value.
+    #[inline(always)]
+    fn char_size(&self) -> std::io::Result<CharSize> {
+        self.inner.get_configuration()?.get_char_size()
+    }
+
+    /// Returns the flow control mode.
+    ///
+    /// This function returns `None` if the flow control mode could not be determined. This may
+    /// occur if the hardware is in an uninitialized state or is using an unsupported flow control
+    /// mode. Setting a flow control mode with `set_flow_control()` should initialize the flow
+    /// control mode to a supported value.
+    #[inline(always)]
+    fn flow_control(&self) -> std::io::Result<FlowControl> {
+        self.inner.get_configuration()?.get_flow_control()
+    }
+
+    /// Returns the parity-checking mode.
+    ///
+    /// This function returns `None` if the parity mode could not be determined. This may occur if
+    /// the hardware is in an uninitialized state or is using a non-standard parity mode. Setting
+    /// a parity mode with `set_parity()` should initialize the parity mode to a supported value.
+    #[inline(always)]
+    fn parity(&self) -> std::io::Result<Parity> {
+        self.inner.get_configuration()?.get_parity()
+    }
+
+    /// Returns the number of stop bits.
+    ///
+    /// This function returns `None` if the number of stop bits could not be determined. This may
+    /// occur if the hardware is in an uninitialized state or is using an unsupported stop bit
+    /// configuration. Setting the number of stop bits with `set_stop-bits()` should initialize the
+    /// stop bits to a supported value.
+    #[inline(always)]
+    fn stop_bits(&self) -> std::io::Result<StopBits> {
+        self.inner.get_configuration()?.get_stop_bits()
+    }
+
+    /// Returns the current timeout. This parameter is const and equal to zero and implemented due
+    /// to required for trait completeness.
+    #[inline(always)]
+    fn timeout(&self) -> Duration {
+        Duration::from_secs(0)
+    }
+
+    /// Sets the baud rate.
+    ///
+    /// ## Errors
+    ///
+    /// If the implementation does not support the requested baud rate, this function may return an
+    /// `InvalidInput` error. Even if the baud rate is accepted by `set_baud_rate()`, it may not be
+    /// supported by the underlying hardware.
+    #[inline(always)]
+    fn set_baud_rate(&mut self, baud_rate: u32) -> std::io::Result<()> {
+        self.inner.get_configuration()?.set_baud_rate(baud_rate)
+    }
+
+    /// Sets the character size.
+    #[inline(always)]
+    fn set_char_size(&mut self, char_size: CharSize) -> std::io::Result<()> {
+        Ok(self.inner.get_configuration()?.set_char_size(char_size))
+    }
+
+    // Port settings setters
+
+    /// Sets the flow control mode.
+    #[inline(always)]
+    fn set_flow_control(&mut self, flow_control: crate::FlowControl) -> std::io::Result<()> {
+        Ok(self.inner.get_configuration()?.set_flow_control(flow_control))
+    }
+
+    /// Sets the parity-checking mode.
+    #[inline(always)]
+    fn set_parity(&mut self, parity: crate::Parity) -> std::io::Result<()> {
+        Ok(self.inner.get_configuration()?.set_parity(parity))
+    }
+
+    /// Sets the number of stop bits.
+    #[inline(always)]
+    fn set_stop_bits(&mut self, stop_bits: StopBits) -> std::io::Result<()> {
+        Ok(self.inner.get_configuration()?.set_stop_bits(stop_bits))
+    }
+
+    /// Sets the timeout for future I/O operations. This parameter is ignored but
+    /// required for trait completeness.
+    #[inline(always)]
+    fn set_timeout(&mut self, _: Duration) -> std::io::Result<()> {
+        Ok(())
+    }
+
+    /// Sets the state of the RTS (Request To Send) control signal.
+    ///
+    /// Setting a value of `true` asserts the RTS control signal. `false` clears the signal.
+    ///
+    /// ## Errors
+    ///
+    /// This function returns an error if the RTS control signal could not be set to the desired
+    /// state on the underlying hardware:
+    ///
+    /// * `NoDevice` if the device was disconnected.
+    /// * `Io` for any other type of I/O error.
+    #[inline(always)]
+    fn write_request_to_send(&mut self, level: bool) -> std::io::Result<()> {
+        Ok(self.inner.set_rts(level)?)
+    }
+
+    /// Writes to the Data Terminal Ready pin
+    ///
+    /// Setting a value of `true` asserts the DTR control signal. `false` clears the signal.
+    ///
+    /// ## Errors
+    ///
+    /// This function returns an error if the DTR control signal could not be set to the desired
+    /// state on the underlying hardware:
+    ///
+    /// * `NoDevice` if the device was disconnected.
+    /// * `Io` for any other type of I/O error.
+    #[inline(always)]
+    fn write_data_terminal_ready(&mut self, level: bool) -> std::io::Result<()> {
+        self.inner.set_dtr(level)
+    }
+
+    // Functions for setting non-data control signal pins
+
+    /// Reads the state of the CTS (Clear To Send) control signal.
+    ///
+    /// This function returns a boolean that indicates whether the CTS control signal is asserted.
+    ///
+    /// ## Errors
+    ///
+    /// This function returns an error if the state of the CTS control signal could not be read
+    /// from the underlying hardware:
+    ///
+    /// * `NoDevice` if the device was disconnected.
+    /// * `Io` for any other type of I/O error.
+    #[inline(always)]
+    fn read_clear_to_send(&mut self) -> std::io::Result<bool> {
+        self.inner.read_cts()
+    }
+
+    /// Reads the state of the Data Set Ready control signal.
+    ///
+    /// This function returns a boolean that indicates whether the DSR control signal is asserted.
+    ///
+    /// ## Errors
+    ///
+    /// This function returns an error if the state of the DSR control signal could not be read
+    /// from the underlying hardware:
+    ///
+    /// * `NoDevice` if the device was disconnected.
+    /// * `Io` for any other type of I/O error.
+    #[inline(always)]
+    fn read_data_set_ready(&mut self) -> std::io::Result<bool> {
+        self.inner.read_dsr()
+    }
+
+    // Functions for reading additional pins
+
+    /// Reads the state of the Ring Indicator control signal.
+    ///
+    /// This function returns a boolean that indicates whether the RI control signal is asserted.
+    ///
+    /// ## Errors
+    ///
+    /// This function returns an error if the state of the RI control signal could not be read from
+    /// the underlying hardware:
+    ///
+    /// * `NoDevice` if the device was disconnected.
+    /// * `Io` for any other type of I/O error.
+    #[inline(always)]
+    fn read_ring_indicator(&mut self) -> std::io::Result<bool> {
+        self.inner.read_ri()
+    }
+
+    /// Reads the state of the Carrier Detect control signal.
+    ///
+    /// This function returns a boolean that indicates whether the CD control signal is asserted.
+    ///
+    /// ## Errors
+    ///
+    /// This function returns an error if the state of the CD control signal could not be read from
+    /// the underlying hardware:
+    ///
+    /// * `NoDevice` if the device was disconnected.
+    /// * `Io` for any other type of I/O error.
+    #[inline(always)]
+    fn read_carrier_detect(&mut self) -> std::io::Result<bool> {
+        self.inner.read_cd()
+    }
+
+    /// Gets the number of bytes available to be read from the input buffer.
+    ///
+    /// # Errors
+    ///
+    /// This function may return the following errors:
+    ///
+    /// * `NoDevice` if the device was disconnected.
+    /// * `Io` for any other type of I/O error.
+    #[inline(always)]
+    fn bytes_to_read(&self) -> std::io::Result<u32> {
+        self.inner.bytes_to_read()
+    }
+
+    /// Get the number of bytes written to the output buffer, awaiting transmission.
+    ///
+    /// # Errors
+    ///
+    /// This function may return the following errors:
+    ///
+    /// * `NoDevice` if the device was disconnected.
+    /// * `Io` for any other type of I/O error.
+    #[inline(always)]
+    fn bytes_to_write(&self) -> std::io::Result<u32> {
+        self.inner.bytes_to_write()
+    }
+
+    /// Discards all bytes from the serial driver's input buffer and/or output buffer.
+    ///
+    /// # Errors
+    ///
+    /// This function may return the following errors:
+    ///
+    /// * `NoDevice` if the device was disconnected.
+    /// * `Io` for any other type of I/O error.
+    #[inline(always)]
+    fn clear(&self, buffer_to_clear: ClearBuffer) -> std::io::Result<()> {
+        self.inner.clear(buffer_to_clear)
+    }
+
+    /// Start transmitting a break
+    #[inline(always)]
+    fn set_break(&self) -> std::io::Result<()> {
+        self.inner.set_break()
+    }
+
+    /// Stop transmitting a break
+    #[inline(always)]
+    fn clear_break(&self) -> std::io::Result<()> {
+        self.inner.clear_break()
+    }
 }
 
 impl std::io::Read for SerialPort {
